@@ -4,7 +4,7 @@ from .schemas import MatchInput
 
 app = FastAPI(title="Match Predictor API")
 
-origins = ["http://localhost:3000"]
+origins = ["http://localhost:5173"]
 
 app.add_middleware(
     CORSMiddleware,
