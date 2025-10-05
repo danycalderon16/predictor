@@ -1,39 +1,67 @@
-import { useState } from 'react'
-
+import { useState, useEffect } from "react";
 
 export default function App() {
-  const [home, setHome] = useState('')
-  const [away, setAway] = useState('')
-  const [result, setResult] = useState(null)
+  const [teams, setTeams] = useState([]);
+  const [homeTeam, setHomeTeam] = useState("");
+  const [awayTeam, setAwayTeam] = useState("");
+  const [result, setResult] = useState(null);
 
-
-  async function handlePredict(e) {
-    e.preventDefault()
-    const res = await fetch('http://localhost:8000/predict', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ home_team: home, away_team: away })
-    })
-    const data = await res.json()
-    setResult(data)
-  }
+  // Cargar equipos al iniciar
+  useEffect(() => {
+    fetch("http://127.0.0.1:8000/teams")
+      .then(res => res.json())
+      .then(data => setTeams(data.teams));
+  }, []);
 
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>Match Predictor (frontend)</h1>
-      <form onSubmit={handlePredict}>
-        <input placeholder="Home team" value={home} onChange={e => setHome(e.target.value)} />
-        <input placeholder="Away team" value={away} onChange={e => setAway(e.target.value)} />
-        <button type="submit">Predecir</button>
-      </form>
+    <>
+    <form
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (!homeTeam || !awayTeam) return;
 
+        const res = await fetch("http://127.0.0.1:8000/predict", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            home_team_api_id: parseInt(homeTeam),
+            away_team_api_id: parseInt(awayTeam)
+          })
+        });
+
+        const data = await res.json();
+        setResult(data);
+      }}
+    >
+      <label>Equipo Local:</label>
+      <select value={homeTeam} onChange={(e) => setHomeTeam(e.target.value)}>
+        <option value="">Selecciona un equipo</option>
+        {teams.map(team => (
+          <option key={team.team_api_id} value={team.team_api_id}>
+            {team.team_long_name}
+          </option>
+        ))}
+      </select>
+
+      <label>Equipo Visitante:</label>
+      <select value={awayTeam} onChange={(e) => setAwayTeam(e.target.value)}>
+        <option value="">Selecciona un equipo</option>
+        {teams.map(team => (
+          <option key={team.team_api_id} value={team.team_api_id}>
+            {team.team_long_name}
+          </option>
+        ))}
+      </select>
+
+      <button type="submit">Predecir</button>
+    </form>
 
       {result && (
         <div style={{ marginTop: 20 }}>
-          <pre>{JSON.stringify(result, null, 2)}</pre>
+          <strong>Predicción:</strong> {result.prediction}
         </div>
       )}
-    </div>
+    </>
   )
 }

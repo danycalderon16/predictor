@@ -1,6 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .schemas import MatchInput
+from .schemas import MatchInput, MatchData
+import joblib
+import os
+import sqlite3
+import pandas as pd
+
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+model_path = os.path.join(BASE_DIR, "../models/trainig.pkl")
+DB_PATH = os.path.join(BASE_DIR, "../data/database.sqlite")
 
 app = FastAPI(title="Match Predictor API")
 
@@ -20,21 +29,22 @@ async def root():
         "message": "Welcome to the Match Predictor API!"
     }
 
+model = joblib.load(model_path)
 
 @app.post("/predict")
-async def predict(data: MatchInput):
-# Lógica dummy: si envías promedios de gol, comparamos; si no, devolvemos empate probabilístico.
-    if data.home_goals_avg is not None and data.away_goals_avg is not None:
-        if data.home_goals_avg > data.away_goals_avg + 0.2:
-            pred = "home"
-        elif data.away_goals_avg > data.home_goals_avg + 0.2:
-            pred = "away"
-        else:
-            pred = "draw"
-        probs = {"home": 0.6, "draw": 0.2, "away": 0.2}
-    else:
-        pred = "draw"
-        probs = {"home": 0.33, "draw": 0.34, "away": 0.33}
+def predict(match: MatchData):
+    data = [[match.home_team_api_id, match.away_team_api_id]]
+    prediction = model.predict(data)[0]
 
+    result = {1:"Home Win", 0:"Draw", -1: "Away Win"}[prediction]
+    return {"prediction": result}
 
-    return {"prediction": pred, "probabilities": probs, "input": data.dict()}
+@app.get("/teams")
+def get_teams():
+    conn = sqlite3.connect(DB_PATH)
+    query = "SELECT team_api_id, team_long_name FROM Team ORDER BY team_long_name ASC"
+    df = pd.read_sql_query(query, conn)
+    conn.close()
+    
+    teams = df.to_dict(orient="records")
+    return {"teams": teams}
