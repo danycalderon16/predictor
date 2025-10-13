@@ -5,3 +5,6 @@ pydantic
 joblib
 scikit-learn
 pandas
+pylint
+black
+ruff
